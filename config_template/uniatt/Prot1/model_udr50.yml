@@ -1,0 +1,42 @@
+model:
+  name: UDR50
+  num_classes: 2
+  drop_rate: 0.5
+  mid_depth: 1024
+  extractor: resnet50
+  extractor_weights: "ckpt/resnet50_a1_0-14fe96d1.pth"
+config:
+  distribute:
+    backend: nccl
+  find_unused: False  # Whether to find unused params
+  warmup_step: 0
+  lambda_triplet: 0.1
+  lambda_recons: 0.1
+  lambda_freq: 1.0
+  lambda_mask: 0.1
+  lambda_fac: 0.1
+  optimizer:
+    name: adamw
+    lr: 0.0001
+    betas: [0.9, 0.999]
+    weight_decay: 0.000005
+    amsgrad: True
+  scheduler:
+    name: StepLR
+    step_size: 22500
+    gamma: 0.5
+  crop: nocrop
+  resume: False
+  resume_best: False
+  id: UniAtt_P1_ffpp
+  debug: False
+data:
+  train_batch_size: 10
+  val_batch_size: 64
+  test_batch_size: 96
+  file: "./config/uniatt/Prot1/data_ffpp_res.yml"
+  # file: "./config/uniatt/Prot1/data_cdf_res.yml"
+  # file: "./config/uniatt/Prot1/data_seqdf_res.yml"
+  # file: "./config/uniatt/Prot1/data_oulu_res.yml"
+  # file: "./config/uniatt/Prot1/data_hq_res.yml"
+  # file: "./config/uniatt/Prot1/data_siwmv2_res.yml"

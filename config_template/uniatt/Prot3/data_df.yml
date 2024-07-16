@@ -1,0 +1,83 @@
+root: /path/to/UniAttack
+
+FFpp_root: /path/to/UniAttack/FaceForensics++
+CDF_root: null
+SeqDF_root: null
+HQ_root:   /path/to/UniAttack/HQ_WMCA
+OULU_root: null
+SiWMv2_root: null
+
+name: UniAttack
+train_real_fpv: 10
+train_fake_fpv: 4
+val_real_fpv: 2
+val_fake_fpv: 2
+test_real_fpv: 5
+test_fake_fpv: 5
+
+# # # # # dataset method # # # # #
+train_real_method: ['FFpp-Real', 'HQ-Real']
+train_fake_method: 
+  - 'FFpp-F2F'
+  - 'FFpp-FS'
+  - 'FFpp-NT'
+  - 'HQ-Flexiblemask'
+  - 'HQ-Makeup'
+  - 'HQ-Replay'
+  - 'HQ-Rigidmask'
+
+val_real_method: ['FFpp-Real', 'HQ-Real']
+val_fake_method: 
+  - 'FFpp-F2F'
+  - 'FFpp-FS'
+  - 'FFpp-NT'
+  - 'HQ-Flexiblemask'
+  - 'HQ-Makeup'
+  - 'HQ-Replay'
+  - 'HQ-Rigidmask'
+
+test_method: 
+  - 'FFpp-Real'
+  - 'FFpp-DF'
+
+# # # # # training parameters # # # # #
+num_steps: 15000
+log_steps: 500
+val_steps: 500
+
+# # # # # transforms # # # # #
+train_transforms:
+  - name: "RandomResizedCrop"
+    params:
+      height: 380
+      width: 380
+      interpolation: 2 # INTER_CUBIC
+      p: 1.0
+      scale: [0.8, 1.0]
+  - name: "HorizontalFlip"
+    params:
+      p: 0.5
+  - name: "Normalize"
+    params:
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]
+
+val_transforms:
+  - name: "Resize"
+    params:
+      height: 380
+      width: 380
+  - name: "Normalize"
+    params:
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]
+
+test_transforms:
+  - name: "Resize"
+    params:
+      height: 380
+      width: 380
+  - name: "Normalize"
+    params:
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]

@@ -1,0 +1,49 @@
+root: /path/to/data
+
+name: FFpp
+use_lmdb: False
+
+# # # # # dataset method # # # # #
+real_method: ['Origin']
+fake_method: ['Deepfakes', 'Face2Face', 'FaceSwap', 'NeuralTextures']
+# # # # # dataset compression # # # # #
+compression: c23
+
+# # # # # training parameters # # # # #
+num_steps: 90000
+log_steps: 1000
+val_steps: 1000
+
+# # # # # transforms # # # # #
+train_transforms:
+  - name: "Resize"
+    params:
+      height: 380
+      width: 380
+  - name: "HorizontalFlip"
+    params:
+      p: 0.5
+  - name: "Normalize"
+    params:
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]
+
+val_transforms:
+  - name: "Resize"
+    params:
+      height: 380
+      width: 380
+  - name: "Normalize"
+    params:
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]
+
+test_transforms:
+  - name: "Resize"
+    params:
+      height: 380
+      width: 380
+  - name: "Normalize"
+    params:
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]

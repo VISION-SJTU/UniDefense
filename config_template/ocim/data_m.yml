@@ -1,0 +1,57 @@
+root: /path/to/data
+
+O_root: Oulu_NPU
+C_root: CASIA_database
+I_root: replayattack
+M_root: MSU-MFSD
+
+use_lmdb: True
+
+test_fpv: 10
+
+# # # # # dataset composition # # # # #
+train_dataset: [C,O,I]
+dev_dataset: [M]
+test_dataset: [M]
+
+# # # # # training parameters # # # # #
+num_steps: 8000
+log_steps: 100
+val_steps: 100
+
+# # # # # transforms # # # # #
+train_transforms:
+  - name: "RandomResizedCrop"
+    params:
+      height: 256
+      width: 256
+      interpolation: 2 # INTER_CUBIC
+      p: 1.0
+      scale: [0.2, 1.0]
+  - name: "HorizontalFlip"
+    params:
+      p: 0.5
+  - name: "Normalize"
+    params:
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]
+
+dev_transforms:
+  - name: "Resize"
+    params:
+      height: 256
+      width: 256
+  - name: "Normalize"
+    params:
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]
+
+test_transforms:
+  - name: "Resize"
+    params:
+      height: 256
+      width: 256
+  - name: "Normalize"
+    params:
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]

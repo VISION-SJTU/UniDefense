@@ -1,0 +1,92 @@
+root: /path/to/UniAttack
+
+FFpp_root: /path/to/UniAttack/FaceForensics++
+CDF_root:  /path/to/UniAttack/Celeb-DF
+SeqDF_root: /path/to/UniAttack/Seq-DeepFake
+HQ_root:   /path/to/UniAttack/HQ_WMCA
+OULU_root: /path/to/UniAttack/Oulu_NPU
+SiWMv2_root: /path/to/UniAttack/SiW-Mv2
+
+name: UniAttack
+train_real_fpv: 10
+train_fake_fpv: 2
+val_real_fpv: 2
+val_fake_fpv: 2
+test_real_fpv: 5
+test_fake_fpv: 5
+
+# # # # # dataset method # # # # #
+train_real_method: ['FFpp-Real', 'SeqDF-Real', 'CDF-Real', 'OULU-Real', 'SiWMv2-Real']
+train_fake_method: 
+  - 'FFpp-DF'
+  - 'FFpp-F2F'
+  - 'FFpp-FS'
+  - 'FFpp-NT'
+  - 'CDF-Fake'
+  - 'SeqDF-Fake'
+  - 'OULU-Fake'
+  - 'SiWMv2-Fake'
+
+val_real_method: ['FFpp-Real', 'SeqDF-Real', 'CDF-Real', 'OULU-Real', 'SiWMv2-Real']
+val_fake_method: 
+  - 'FFpp-DF'
+  - 'FFpp-F2F'
+  - 'FFpp-FS'
+  - 'FFpp-NT'
+  - 'CDF-Fake'
+  - 'SeqDF-Fake'
+  - 'OULU-Fake'
+  - 'SiWMv2-Fake'
+
+test_method: 
+  - 'HQ-Real'
+  - 'HQ-Flexiblemask'
+  - 'HQ-Glasses'
+  - 'HQ-Makeup'
+  - 'HQ-Mannequin'
+  - 'HQ-Papermask'
+  - 'HQ-Replay'
+  - 'HQ-Rigidmask'
+  - 'HQ-Tattoo'
+
+# # # # # training parameters # # # # #
+num_steps: 8000
+log_steps: 10
+val_steps: 10
+
+# # # # # transforms # # # # #
+train_transforms:
+  - name: "RandomResizedCrop"
+    params:
+      height: 380
+      width: 380
+      interpolation: 2 # INTER_CUBIC
+      p: 1.0
+      scale: [0.5, 1.0]
+  - name: "HorizontalFlip"
+    params:
+      p: 0.5
+  - name: "Normalize"
+    params:
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]
+
+val_transforms:
+  - name: "Resize"
+    params:
+      height: 380
+      width: 380
+  - name: "Normalize"
+    params:
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]
+
+test_transforms:
+  - name: "Resize"
+    params:
+      height: 380
+      width: 380
+  - name: "Normalize"
+    params:
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]
