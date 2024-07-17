@@ -98,6 +98,13 @@ Please ensure that you have already installed the following packages.
   ```bash
   cp -r config_template config
   ```
+- Please create a new folder `ckpt` and download imagenet pre-trained weights of [EfficientNet-b4](https://github.com/lukemelas/EfficientNet-PyTorch/releases/download/1.0/adv-efficientnet-b4-44fb3a87.pth), [ResNet18](https://download.pytorch.org/models/resnet18-5c106cde.pth), and [ResNet50](https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-rsb-weights/resnet50_a1_0-14fe96d1.pth) inside `ckpt`.
+  ```bash
+  mkdir ckpt && cd ckpt
+  wget https://github.com/lukemelas/EfficientNet-PyTorch/releases/download/1.0/adv-efficientnet-b4-44fb3a87.pth
+  wget https://download.pytorch.org/models/resnet18-5c106cde.pth
+  wget https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-rsb-weights/resnet50_a1_0-14fe96d1.pth
+  ```
 - To start a training experiment, run the following script in your console. 
   ```bash
   CUDA_VISIBLE_DEVICES=0 python -m torch.distributed.launch --nproc_per_node=1 --master_port 10000 \
