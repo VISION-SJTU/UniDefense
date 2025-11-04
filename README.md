@@ -45,6 +45,17 @@ We propose a dual space reconstruction framework to detect face forgery and spoo
 ```
 
 ```
+@inproceedings{Cao_2025_WACV,
+    author    = {Cao, Junyi and Ma, Chao},
+    title     = {Towards Generalized Face Anti-Spoofing from a Frequency Shortcut View},
+    booktitle = {Proceedings of the Winter Conference on Applications of Computer Vision (WACV)},
+    month     = {February},
+    year      = {2025},
+    pages     = {1005-1015}
+}
+```
+
+```
 @inproceedings{Cao_2022_CVPR,
     author    = {Cao, Junyi and Ma, Chao and Yao, Taiping and Chen, Shen and Ding, Shouhong and Yang, Xiaokang},
     title     = {End-to-End Reconstruction-Classification Learning for Face Forgery Detection},
