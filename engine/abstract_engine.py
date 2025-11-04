@@ -380,6 +380,59 @@ class AbstractEngine(object):
 
         return ret_dict
 
+    def train_fsl_model(self, in_data, in_tgt, cur_step, grad_scalar, sum_real=None, sum_fake=None):
+        with autocast(enabled=False):
+            # forward pass
+            out_dict = self.model(in_data, sum_real=sum_real, sum_fake=sum_fake)
+            cls_out = out_dict["cls_out"]
+            loss_dict = out_dict.get("loss_dict", dict())
+
+            # asymmetrical weighted triplet loss
+            if loss_dict.get("triplet") is not None:
+                triplet_loss = sum([self.loss_criterion["ori_triplet"](feat, in_tgt)
+                                    for feat in loss_dict["triplet"]])
+            else: 
+                triplet_loss = torch.tensor(0., device=self.device)
+
+            # frequency rec loss
+            if loss_dict.get("freq") is not None:
+                real_lf_loss = torch.mean(loss_dict["freq"].narrow(0, 0, sum_real))
+                fake_lf_loss = torch.mean(loss_dict["freq"].narrow(0, sum_real, sum_fake))
+            else:
+                real_lf_loss = torch.tensor(0., device=self.device)
+                fake_lf_loss = torch.tensor(0., device=self.device)
+
+            # cross-entropy loss
+            if cls_out.shape[-1] == 1:
+                cls_loss = self.loss_criterion["softmax"](cls_out.squeeze(), in_tgt.float())
+            else:
+                cls_loss = self.loss_criterion["softmax"](cls_out, in_tgt)
+
+            # backward
+            total_loss = cls_loss + \
+                self.config["config"].get("lambda_triplet", 1.) * triplet_loss + \
+                self.config["config"].get("lambda_lf", 1.) * real_lf_loss + \
+                self.config["config"].get("lambda_lf", 1.) * fake_lf_loss
+
+            ret_dict = {
+                "total_loss": total_loss,
+                "cls_out": cls_out,
+                "cls_loss": cls_loss,
+                "triplet_loss": triplet_loss,
+                "real_lf_loss": real_lf_loss,
+                "fake_lf_loss": fake_lf_loss,
+            }
+
+        # backward
+        grad_scalar.scale(total_loss).backward()
+        grad_scalar.step(self.optimizer)
+        grad_scalar.update()
+        if self.warmup_step == 0 or cur_step > self.warmup_step:
+            self.scheduler.step()
+        dist.barrier()
+
+        return ret_dict
+
     @staticmethod
     def gather_eval_output(all_prob_list, all_tgt_list):
         final_prob_dict = dict()

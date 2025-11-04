@@ -3,11 +3,13 @@ from .unidefense import (
     UniDefenseModelRes18,
     UniDefenseModelRes50
 )
+from .fsl import FSL
 
 MODEL = {
     "UDEB4": UniDefenseModelEb4,
     "UDR18": UniDefenseModelRes18,
-    "UDR50": UniDefenseModelRes50
+    "UDR50": UniDefenseModelRes50,
+    "FSL": FSL,
 }
 
 def load_model(name="UDE"):

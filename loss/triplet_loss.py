@@ -66,6 +66,47 @@ def triplet_mining(dist_mat: torch.Tensor, labels: torch.Tensor):
     return final_wp, final_wn
 
 
+def original_triplet_mining(dist_mat: torch.Tensor, labels: torch.Tensor):
+    """
+    Anchors consider real/fake faces
+    """
+    eps = 1e-12
+    N = dist_mat.shape[0]
+
+    indices_not_equal = ~torch.eye(N, device=labels.device, dtype=torch.bool)
+    # shape [N, N]
+    is_pos = labels.expand(N, N).eq(labels.expand(N, N).t())
+    is_pos = torch.logical_and(is_pos, indices_not_equal)
+
+    is_neg = labels.expand(N, N).ne(labels.expand(N, N).t())
+
+    dist_ap = dist_mat[is_pos].reshape(N, -1)
+    # print(f'dist ap:\n{dist_ap}')
+    dist_an = dist_mat[is_neg].reshape(N, -1)
+    # print(f'dist an:\n{dist_an}')
+
+    final_wp = torch.sum(dist_ap, dim=1)
+    final_wn = torch.sum(dist_an, dim=1)
+
+    return final_wp, final_wn
+
+
+class OriginalTripletLoss(nn.Module):
+
+    def __init__(self):
+        super(OriginalTripletLoss, self).__init__()
+        self.margin_loss = nn.SoftMarginLoss()
+
+    def forward(self, global_feat, labels, normalize_feature=False):
+        if normalize_feature:
+            global_feat = normalize(global_feat, axis=-1)
+        
+        dist_mat = euclidean_dist(global_feat, global_feat)
+        final_wp, final_wn = original_triplet_mining(dist_mat, labels)
+        y = final_wn.new().resize_as_(final_wn).fill_(1)
+        return self.margin_loss(final_wn - final_wp, y)
+
+
 class AsymmetricalWeightedTripletLoss(nn.Module):
 
     def __init__(self):

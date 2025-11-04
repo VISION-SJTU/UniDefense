@@ -1,6 +1,6 @@
 import torch.nn as nn
 from .calib_loss import FactorizationLoss
-from .triplet_loss import AsymmetricalWeightedTripletLoss
+from .triplet_loss import OriginalTripletLoss, AsymmetricalWeightedTripletLoss
 
 
 def get_loss(name="cross_entropy", device="cuda:0"):
@@ -13,6 +13,7 @@ LOSSES = {
     "bce": nn.BCEWithLogitsLoss(),
     "factorization": FactorizationLoss(),
     "cross_entropy": nn.CrossEntropyLoss(),
+    "ori_triplet": OriginalTripletLoss(),
     "aw_triplet": AsymmetricalWeightedTripletLoss(),
     "kl_div": nn.KLDivLoss(reduction="batchmean", log_target=True),
 }

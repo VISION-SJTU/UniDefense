@@ -146,6 +146,7 @@ class OCIMEngine(AbstractEngine):
         self.loss_criterion = {
             'softmax': get_loss("cross_entropy", device=self.device),
             'triplet': get_loss("aw_triplet", device=self.device),
+            'ori_triplet': get_loss("ori_triplet", device=self.device),
             'kl_div': get_loss("kl_div", device=self.device),
             'fac': get_loss("factorization", device=self.device)
         }

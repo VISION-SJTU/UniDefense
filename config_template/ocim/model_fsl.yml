@@ -1,0 +1,35 @@
+model:
+  name: FSL
+  num_classes: 2
+  mid_depth: 256
+  drop_rate: 0.5
+  freq_norm: ortho
+  patch_size: 16
+  mc_steps: 3
+  pretrained: "ckpt/resnet18-5c106cde.pth"
+config:
+  distribute:
+    backend: nccl
+  find_unused: False  # Whether to find unused params
+  warmup_step: 0
+  lambda_triplet: 0.1
+  lambda_lf: 1.0
+  optimizer:
+    name: adamw
+    lr: 0.0001
+    betas: [0.9, 0.999]
+    weight_decay: 0.00005
+    amsgrad: True
+  crop: nocrop
+  resume: False
+  resume_best: False
+  id: FAS_C
+  debug: False
+data:
+  train_batch_size: 10
+  val_batch_size: 96
+  test_batch_size: 96
+  file: "./config/ocim/data_c.yml"
+  # file: "./config/ocim/data_i.yml"
+  # file: "./config/ocim/data_m.yml"
+  # file: "./config/ocim/data_o.yml"
