@@ -28,10 +28,12 @@ def downscale(tensor, bottleneck_scale=0.75):
 
 def generate_disc(size, norm=1):
     mask = torch.ones(size, size)
+    center = size // 2
     for i in range(size):
         for j in range(size):
-            if np.abs(i - size // 2) + np.abs(j - size // 2) == norm:
-                mask[i , j] = 0.
+            # Fixed: Changed == to <= for a solid disc mask
+            if np.abs(i - center) + np.abs(j - center) <= norm:
+                mask[i, j] = 0.
     return mask
 
 
@@ -49,10 +51,8 @@ class Classifier(nn.Module):
 class FrequencyStyleTransfer(object):
     def __call__(self, content, style) -> torch.Tensor:
         B, C, H, W = content.size()
-        # larger lambda means less perturbation
-        lmda = torch.rand((B, 1, 1, 1))
+        lmda = torch.rand((B, 1, 1, 1), device=content.device, dtype=content.dtype)
         lmda = lmda / 2. + 0.5              # [0.5, 1.0)
-        lmda = lmda.to(content)
 
         freq_a = torch.fft.rfft2(content, dim=(-2, -1), norm='ortho')
         freq_am = torch.abs(freq_a)
@@ -60,7 +60,6 @@ class FrequencyStyleTransfer(object):
 
         freq_b = torch.fft.rfft2(style, dim=(-2, -1), norm='ortho')
         freq_bm = torch.abs(freq_b)
-        # freq_bp = torch.angle(freq_b)
 
         img_rec_ab = (lmda * freq_am + (1. - lmda) * freq_bm) * \
             torch.exp(1j * freq_ap)
@@ -71,18 +70,15 @@ class FrequencyStyleTransfer(object):
 
 class SpatialStyleTransfer(object):
     def __call__(self, content, style) -> torch.Tensor:
-        # content and style features should share the same shape
-        assert (content.size() == style.size())
+        assert content.size() == style.size()
         B, C, H, W = content.size()
-        # larger lambda means less perturbation
-        lmda = torch.rand((B, 1, 1))
+        lmda = torch.rand((B, 1, 1), device=content.device, dtype=content.dtype)
         lmda = lmda / 2. + 0.5              # [0.5, 1.0)
-        lmda = lmda.to(content)
-        _, index_content = torch.sort(content.view(
-            B, C, -1), dim=-1)   # sort content feature
-        value_style, _ = torch.sort(style.view(
-            B, C, -1), dim=-1)       # sort style feature
+
+        _, index_content = torch.sort(content.view(B, C, -1), dim=-1)
+        value_style, _ = torch.sort(style.view(B, C, -1), dim=-1)
         inverse_index = index_content.argsort(-1)
+
         transferred_content = content.view(B, C, -1) + \
             (1 - lmda) * value_style.gather(-1, inverse_index) - \
             (1 - lmda) * content.view(B, C, -1).detach()
@@ -91,16 +87,19 @@ class SpatialStyleTransfer(object):
 
 
 class FrequencyDynamicFilter(nn.Module):
-    def __init__(self, depth, activation, norm, affine, bias) -> None:
+    def __init__(self, depth, activation, norm, affine, bias, diff_chans=6) -> None:
         super().__init__()
-        self.layer1 = [nn.Conv2d(depth * 2, depth * 2, 1, bias=bias)]
-        self.layer1 += [norm(depth * 2, affine=affine)]
-        self.layer1 += [activation()]
-        self.layer1 = nn.Sequential(*self.layer1)
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(depth * 2, depth * 2, 1, bias=bias),
+            norm(depth * 2, affine=affine),
+            activation()
+        )
 
-        self.layer2 = [nn.Conv2d(8, 1, 1, bias=bias)]
-        self.layer2 += [nn.Sigmoid()]
-        self.layer2 = nn.Sequential(*self.layer2)
+        # Dynamic channel adaptation for diff
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(2 + diff_chans, 1, 1, bias=bias),
+            nn.Sigmoid()
+        )
 
     def forward(self, x, diff):
         proj_x = self.layer1(x)
@@ -112,24 +111,25 @@ class FrequencyDynamicFilter(nn.Module):
         ], dim=1)
 
         mask = self.layer2(pre_mask)
-
         filtered_x = mask * x
 
-        out = {"mask": mask, "out": filtered_x}
-        return out
+        return {"mask": mask, "out": filtered_x}
 
 
 class SpatialDynamicFilter(nn.Module):
-    def __init__(self, depth, activation, norm, affine, bias) -> None:
+    def __init__(self, depth, activation, norm, affine, bias, diff_chans=3) -> None:
         super().__init__()
-        self.layer1 = [nn.Conv2d(depth, depth, 3, 1, 1, bias=bias)]
-        self.layer1 += [norm(depth, affine=affine)]
-        self.layer1 += [activation()]
-        self.layer1 = nn.Sequential(*self.layer1)
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(depth, depth, 3, 1, 1, bias=bias),
+            norm(depth, affine=affine),
+            activation()
+        )
 
-        self.layer2 = [nn.Conv2d(5, 1, 1, bias=bias)]
-        self.layer2 += [nn.Sigmoid()]
-        self.layer2 = nn.Sequential(*self.layer2)
+        # Dynamic channel adaptation for diff
+        self.layer2 = nn.Sequential(
+            nn.Conv2d(2 + diff_chans, 1, 1, bias=bias),
+            nn.Sigmoid()
+        )
 
     def forward(self, x, diff):
         proj_x = self.layer1(x)
@@ -141,11 +141,9 @@ class SpatialDynamicFilter(nn.Module):
         ], dim=1)
 
         mask = self.layer2(pre_mask)
-
         filtered_x = mask * x
 
-        out = {"mask": mask, "out": filtered_x}
-        return out
+        return {"mask": mask, "out": filtered_x}
 
 
 class RFFT2(nn.Module):
@@ -174,19 +172,17 @@ class IRFFT2(nn.Module):
 
 class CustomInstanceNorm(nn.InstanceNorm2d):
     """ Affine = True """
-
-    def __init__(self, num_features):
+    def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=True, track_running_stats=False):
         super(CustomInstanceNorm, self).__init__(
             num_features,
-            eps=1e-5,
-            momentum=0.1,
-            affine=True,
-            track_running_stats=False
+            eps=eps,
+            momentum=momentum,
+            affine=affine,
+            track_running_stats=track_running_stats
         )
 
 
 class ResExtractor(nn.Module):
-
     def __init__(
         self,
         in_chans=3,
@@ -194,8 +190,10 @@ class ResExtractor(nn.Module):
         norm_layer=CustomInstanceNorm,
     ):
         super(ResExtractor, self).__init__()
-        if issubclass(norm_layer, nn.InstanceNorm2d):
+        # Fixed: Safely check if norm_layer is a class before checking subclass
+        if isinstance(norm_layer, type) and issubclass(norm_layer, nn.InstanceNorm2d):
             norm_layer = CustomInstanceNorm
+
         net = resnet18(in_chans=in_chans, pretrained=False, norm_layer=norm_layer)
         self.conv1 = net.conv1
         self.bn1 = net.bn1
@@ -204,7 +202,7 @@ class ResExtractor(nn.Module):
         self.layer1 = net.layer1
         self.layer2 = net.layer2
         self.layer3 = net.layer3
-        # Initialize weights first, and then load pretrained weights
+
         self._initial_weights()
         if pretrained is not None:
             ckpt = torch.load(pretrained, map_location="cpu")
@@ -219,19 +217,20 @@ class ResExtractor(nn.Module):
             self.load_state_dict(params, strict=False)
             print(f"ResExtractor with weights {pretrained} loaded.")
         else:
-            print(f"ResExtractor init with random weights.")
+            print("ResExtractor init with random weights.")
     
     def _initial_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
                 m.weight.data.normal_(0, math.sqrt(2. / n))
-            elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.InstanceNorm2d):
-                m.weight.data.fill_(1.0)
-                m.bias.data.zero_()
+            elif isinstance(m, (nn.BatchNorm2d, nn.InstanceNorm2d)):
+                if m.weight is not None:
+                    m.weight.data.fill_(1.0)
+                if m.bias is not None:
+                    m.bias.data.zero_()
 
     def forward(self, x):
-        # original branch
         feat = self.conv1(x)
         feat = self.bn1(feat)
         feat = self.relu(feat)
